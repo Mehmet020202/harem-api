@@ -5,11 +5,13 @@ const axios = require('axios');
 const app = express();
 const router = express.Router();
 
-// CORS
+// CORS ve CSP
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', '*');
   res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.header('Access-Control-Max-Age', '86400'); // 24 saat cache
+  res.header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://www.gstatic.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:;");
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
@@ -118,10 +120,17 @@ router.get('/harem-altin/:kod', async (req, res) => {
       cache = { data, timestamp: now, ttl: 30000 };
     }
 
-    const altin = data.data.find(item =>
-      (item.kod && item.kod.toUpperCase() === kod) ||
-      (item.isim && item.isim.toUpperCase().includes(kod))
+    // Önce kod eşleşmesi ara
+    let altin = data.data.find(item =>
+      item.kod && item.kod.toUpperCase() === kod
     );
+    
+    // Kod eşleşmesi yoksa isim eşleşmesi ara
+    if (!altin) {
+      altin = data.data.find(item =>
+        item.isim && item.isim.toUpperCase().includes(kod)
+      );
+    }
 
     if (altin) {
       res.json({
