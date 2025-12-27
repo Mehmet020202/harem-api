@@ -1,13 +1,19 @@
 const express = require('express');
 const serverless = require('serverless-http');
 const axios = require('axios');
+const qs = require('querystring');
 
 const app = express();
 const router = express.Router();
 
+// CORS - OPTIONS desteği ile
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Headers', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
   next();
 });
 
@@ -15,17 +21,21 @@ let cache = { data: null, timestamp: null, ttl: 30000 };
 
 async function fetchHaremAltin() {
   try {
-    const response = await axios.post('https://www.haremaltin.com/kurgetir', {}, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json, text/javascript, */*; q=0.01',
-        'X-Requested-With': 'XMLHttpRequest',
-        'Origin': 'https://www.haremaltin.com',
-        'Referer': 'https://www.haremaltin.com/'
-      },
-      timeout: 10000
-    });
+    const response = await axios.post(
+      'https://www.haremaltin.com/kurgetir',
+      qs.stringify({}),  // ✅ querystring ile encode
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json, text/javascript, */*; q=0.01',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Origin': 'https://www.haremaltin.com',
+          'Referer': 'https://www.haremaltin.com/'
+        },
+        timeout: 10000
+      }
+    );
 
     if (response.data && Array.isArray(response.data)) {
       const altinlar = response.data.map(item => ({
@@ -48,6 +58,7 @@ async function fetchHaremAltin() {
     }
     throw new Error('Geçersiz veri formatı');
   } catch (err) {
+    console.error('Harem Altın API Hatası:', err.message);
     throw new Error('API hatası: ' + err.message);
   }
 }
@@ -56,12 +67,18 @@ router.get('/', (req, res) => {
   res.json({
     mesaj: 'Harem Altın API',
     versiyon: '2.0.0',
+    durum: 'Aktif',
     endpoints: {
       'GET /api/harem-altin': 'Tüm altın fiyatları',
       'GET /api/harem-altin/:kod': 'Spesifik altın (örn: KULCEALTIN)',
       'GET /api/harem-altin/kategori/:kategori': 'Kategori (altin, gumus, diger)',
       'GET /api/health': 'Sağlık kontrolü'
-    }
+    },
+    ornekler: [
+      '/api/harem-altin',
+      '/api/harem-altin/KULCEALTIN',
+      '/api/harem-altin/kategori/altin'
+    ]
   });
 });
 
@@ -75,7 +92,11 @@ router.get('/harem-altin', async (req, res) => {
     cache = { data, timestamp: now, ttl: 30000 };
     res.json({ ...data, cached: false });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ 
+      success: false, 
+      error: err.message,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
@@ -119,7 +140,8 @@ router.get('/harem-altin/kategori/:kategori', async (req, res) => {
     if (kategori === 'altin') {
       filtrelenmis = data.data.filter(item => 
         item.isim && (item.isim.includes('ALTIN') || item.isim.includes('ÇEYREK') || 
-        item.isim.includes('YARIM') || item.isim.includes('TAM') || item.isim.includes('ATA'))
+        item.isim.includes('YARIM') || item.isim.includes('TAM') || item.isim.includes('ATA') ||
+        item.isim.includes('GREMSE'))
       );
     } else if (kategori === 'gumus') {
       filtrelenmis = data.data.filter(item => item.isim && item.isim.includes('GÜMÜŞ'));
@@ -128,7 +150,11 @@ router.get('/harem-altin/kategori/:kategori', async (req, res) => {
         item.isim && (item.isim.includes('PLATİN') || item.isim.includes('PALADYUM'))
       );
     } else {
-      return res.status(400).json({ success: false, error: 'Geçersiz kategori' });
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Geçersiz kategori',
+        gecerli_kategoriler: ['altin', 'gumus', 'diger']
+      });
     }
     res.json({
       success: true,
@@ -143,8 +169,24 @@ router.get('/harem-altin/kategori/:kategori', async (req, res) => {
   }
 });
 
-router.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+router.get('/health', async (req, res) => {
+  try {
+    // API'nin çalışıp çalışmadığını test et
+    await fetchHaremAltin();
+    res.json({ 
+      status: 'OK',
+      haremaltin_api: 'WORKING',
+      timestamp: new Date().toISOString(),
+      cache_ttl: cache.ttl / 1000 + ' saniye'
+    });
+  } catch (err) {
+    res.status(503).json({ 
+      status: 'ERROR',
+      haremaltin_api: 'DOWN',
+      error: err.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 app.use('/.netlify/functions/api', router);
