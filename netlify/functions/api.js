@@ -1,12 +1,11 @@
 const express = require('express');
 const serverless = require('serverless-http');
 const axios = require('axios');
-const qs = require('querystring');
 
 const app = express();
 const router = express.Router();
 
-// CORS - OPTIONS desteği ile
+// CORS
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', '*');
@@ -17,18 +16,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// Cache
 let cache = { data: null, timestamp: null, ttl: 30000 };
 
+// Harem Altın API
 async function fetchHaremAltin() {
   try {
     const response = await axios.post(
       'https://www.haremaltin.com/kurgetir',
-      qs.stringify({}),  // ✅ querystring ile encode
+      '',
       {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json, text/javascript, */*; q=0.01',
+          'Accept': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
           'Origin': 'https://www.haremaltin.com',
           'Referer': 'https://www.haremaltin.com/'
@@ -63,25 +64,28 @@ async function fetchHaremAltin() {
   }
 }
 
+// Ana sayfa
 router.get('/', (req, res) => {
   res.json({
-    mesaj: 'Harem Altın API',
+    mesaj: 'Harem Altın API - Netlify',
     versiyon: '2.0.0',
-    durum: 'Aktif',
+    durum: 'Aktif ✅',
     endpoints: {
       'GET /api/harem-altin': 'Tüm altın fiyatları',
-      'GET /api/harem-altin/:kod': 'Spesifik altın (örn: KULCEALTIN)',
+      'GET /api/harem-altin/:kod': 'Spesifik altın (KULCEALTIN)',
       'GET /api/harem-altin/kategori/:kategori': 'Kategori (altin, gumus, diger)',
       'GET /api/health': 'Sağlık kontrolü'
     },
     ornekler: [
       '/api/harem-altin',
       '/api/harem-altin/KULCEALTIN',
+      '/api/harem-altin/CEYREK_YENI',
       '/api/harem-altin/kategori/altin'
     ]
   });
 });
 
+// Tüm fiyatlar
 router.get('/harem-altin', async (req, res) => {
   try {
     const now = Date.now();
@@ -92,70 +96,98 @@ router.get('/harem-altin', async (req, res) => {
     cache = { data, timestamp: now, ttl: 30000 };
     res.json({ ...data, cached: false });
   } catch (err) {
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: err.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
+// Spesifik altın
 router.get('/harem-altin/:kod', async (req, res) => {
   try {
     const kod = req.params.kod.toUpperCase();
     const now = Date.now();
     let data;
+    
     if (cache.data && cache.timestamp && (now - cache.timestamp < cache.ttl)) {
       data = cache.data;
     } else {
       data = await fetchHaremAltin();
       cache = { data, timestamp: now, ttl: 30000 };
     }
-    const altin = data.data.find(item => 
-      (item.kod && item.kod.toUpperCase() === kod) || 
+
+    const altin = data.data.find(item =>
+      (item.kod && item.kod.toUpperCase() === kod) ||
       (item.isim && item.isim.toUpperCase().includes(kod))
     );
+
     if (altin) {
-      res.json({ success: true, kaynak: data.kaynak, guncelleme: data.guncelleme, data: altin });
+      res.json({
+        success: true,
+        kaynak: data.kaynak,
+        guncelleme: data.guncelleme,
+        data: altin
+      });
     } else {
-      res.status(404).json({ success: false, error: 'Altın türü bulunamadı' });
+      res.status(404).json({
+        success: false,
+        error: 'Altın türü bulunamadı',
+        kod: kod
+      });
     }
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
+// Kategori
 router.get('/harem-altin/kategori/:kategori', async (req, res) => {
   try {
     const kategori = req.params.kategori.toLowerCase();
     const now = Date.now();
     let data;
+
     if (cache.data && cache.timestamp && (now - cache.timestamp < cache.ttl)) {
       data = cache.data;
     } else {
       data = await fetchHaremAltin();
       cache = { data, timestamp: now, ttl: 30000 };
     }
+
     let filtrelenmis = [];
+
     if (kategori === 'altin') {
-      filtrelenmis = data.data.filter(item => 
-        item.isim && (item.isim.includes('ALTIN') || item.isim.includes('ÇEYREK') || 
-        item.isim.includes('YARIM') || item.isim.includes('TAM') || item.isim.includes('ATA') ||
-        item.isim.includes('GREMSE'))
+      filtrelenmis = data.data.filter(item =>
+        item.isim && (
+          item.isim.includes('ALTIN') ||
+          item.isim.includes('ÇEYREK') ||
+          item.isim.includes('YARIM') ||
+          item.isim.includes('TAM') ||
+          item.isim.includes('ATA') ||
+          item.isim.includes('GREMSE')
+        )
       );
     } else if (kategori === 'gumus') {
-      filtrelenmis = data.data.filter(item => item.isim && item.isim.includes('GÜMÜŞ'));
+      filtrelenmis = data.data.filter(item =>
+        item.isim && item.isim.includes('GÜMÜŞ')
+      );
     } else if (kategori === 'diger') {
-      filtrelenmis = data.data.filter(item => 
-        item.isim && (item.isim.includes('PLATİN') || item.isim.includes('PALADYUM'))
+      filtrelenmis = data.data.filter(item =>
+        item.isim && (
+          item.isim.includes('PLATİN') ||
+          item.isim.includes('PALADYUM')
+        )
       );
     } else {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         error: 'Geçersiz kategori',
         gecerli_kategoriler: ['altin', 'gumus', 'diger']
       });
     }
+
     res.json({
       success: true,
       kaynak: data.kaynak,
@@ -169,19 +201,19 @@ router.get('/harem-altin/kategori/:kategori', async (req, res) => {
   }
 });
 
+// Health check
 router.get('/health', async (req, res) => {
   try {
-    // API'nin çalışıp çalışmadığını test et
     await fetchHaremAltin();
-    res.json({ 
-      status: 'OK',
+    res.json({
+      status: 'OK ✅',
       haremaltin_api: 'WORKING',
       timestamp: new Date().toISOString(),
       cache_ttl: cache.ttl / 1000 + ' saniye'
     });
   } catch (err) {
-    res.status(503).json({ 
-      status: 'ERROR',
+    res.status(503).json({
+      status: 'ERROR ❌',
       haremaltin_api: 'DOWN',
       error: err.message,
       timestamp: new Date().toISOString()

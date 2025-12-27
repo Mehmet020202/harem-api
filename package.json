@@ -1,20 +1,18 @@
 {
   "name": "haremaltin-api",
   "version": "2.0.0",
-  "description": "Harem Altın API - Netlify Optimized",
+  "description": "Harem Altın API - Netlify",
   "main": "netlify/functions/api.js",
   "scripts": {
-    "start": "netlify dev",
-    "deploy": "netlify deploy --prod"
+    "start": "netlify dev"
   },
-  "keywords": ["haremaltin", "altin", "api", "netlify"],
+  "keywords": ["haremaltin", "altin", "api"],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
     "axios": "^1.6.0",
-    "serverless-http": "^3.2.0",
-    "querystring": "^0.2.1"
+    "serverless-http": "^3.2.0"
   },
   "engines": {
     "node": ">=18.0.0"

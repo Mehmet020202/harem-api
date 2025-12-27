@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harem Altın API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .endpoint {
+            background: #f9f9f9;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+            font-family: monospace;
+        }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏆 Harem Altın API</h1>
+        <p>Canlı altın fiyatları için ücretsiz REST API</p>
+        
+        <h2>📡 Endpoints:</h2>
+        
+        <div class="endpoint">
+            <strong>Tüm Fiyatlar:</strong><br>
+            <a href="/api/harem-altin" target="_blank">GET /api/harem-altin</a>
+        </div>
+        
+        <div class="endpoint">
+            <strong>Spesifik Altın:</strong><br>
+            <a href="/api/harem-altin/KULCEALTIN" target="_blank">GET /api/harem-altin/KULCEALTIN</a>
+        </div>
+        
+        <div class="endpoint">
+            <strong>Kategori:</strong><br>
+            <a href="/api/harem-altin/kategori/altin" target="_blank">GET /api/harem-altin/kategori/altin</a>
+        </div>
+        
+        <div class="endpoint">
+            <strong>Health Check:</strong><br>
+            <a href="/api/health" target="_blank">GET /api/health</a>
+        </div>
+        
+        <h2>💻 Kullanım Örneği:</h2>
+        <pre style="background: #2d2d2d; color: #fff; padding: 15px; border-radius: 5px; overflow-x: auto;">
+fetch('/api/harem-altin')
+  .then(res => res.json())
+  .then(data => console.log(data));</pre>
+    </div>
+</body>
+</html>
