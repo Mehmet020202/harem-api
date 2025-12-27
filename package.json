@@ -1,0 +1,17 @@
+{
+  "name": "haremaltin-api",
+  "version": "2.0.0",
+  "description": "Harem Altın API",
+  "main": "netlify/functions/api.js",
+  "scripts": {
+    "start": "netlify dev"
+  },
+  "keywords": ["haremaltin", "altin", "api"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "serverless-http": "^3.2.0"
+  }
+}
